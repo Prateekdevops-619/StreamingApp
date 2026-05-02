@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.admin.replicas }}
+  selector:
+    matchLabels:
+      app: admin-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels:
+        app: admin-service
+    spec:
+      containers:
+        - name: admin-service
+          image: {{ .Values.global.ecrBase }}/{{ .Values.admin.image }}:{{ .Values.global.imageTag }}
+          ports:
+            - containerPort: 3003
+          env:
+            - name: PORT
+              value: "3003"
+            - name: NODE_ENV
+              value: production
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: JWT_SECRET
+            - name: CLIENT_URLS
+              value: "http://frontend-service"
+            - name: AWS_REGION
+              value: {{ .Values.global.awsRegion }}
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3003 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3003 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: {{ .Values.admin.resources.requests.cpu }}
+              memory: {{ .Values.admin.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.admin.resources.limits.cpu }}
+              memory: {{ .Values.admin.resources.limits.memory }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: admin-service
+  ports:
+    - port: 3003
+      targetPort: 3003
+  type: ClusterIP

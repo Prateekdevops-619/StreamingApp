@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-nginx-config
+  namespace: {{ .Values.global.namespace }}
+data:
+  default.conf: |
+    server {
+        listen 80;
+        root /usr/share/nginx/html;
+        index index.html;
+        location / { try_files $uri $uri/ /index.html; }
+        location /proxy/auth/      { rewrite ^/proxy/auth/(.*)      /$1 break; proxy_pass http://auth-service:3001;      proxy_set_header Host $host; }
+        location /proxy/streaming/ { rewrite ^/proxy/streaming/(.*) /$1 break; proxy_pass http://streaming-service:3002; proxy_set_header Host $host; proxy_read_timeout 300; }
+        location /proxy/admin/     { rewrite ^/proxy/admin/(.*)     /$1 break; proxy_pass http://admin-service:3003;     proxy_set_header Host $host; }
+        location /proxy/chat/      { rewrite ^/proxy/chat/(.*)      /$1 break; proxy_pass http://chat-service:3004;      proxy_set_header Host $host; }
+        location /socket.io/ {
+            proxy_pass http://chat-service:3004/socket.io/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_read_timeout 86400;
+        }
+        location /health { return 200 'ok'; add_header Content-Type text/plain; }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: {{ .Values.global.ecrBase }}/{{ .Values.frontend.image }}:{{ .Values.global.imageTag }}
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+          livenessProbe:
+            httpGet: { path: /health, port: 80 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /health, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: {{ .Values.frontend.resources.requests.cpu }}
+              memory: {{ .Values.frontend.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.frontend.resources.limits.cpu }}
+              memory: {{ .Values.frontend.resources.limits.memory }}
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: frontend-nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+  type: {{ .Values.frontend.serviceType }}

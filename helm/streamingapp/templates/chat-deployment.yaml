@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: {{ .Values.chat.replicas }}
+  selector:
+    matchLabels:
+      app: chat-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels:
+        app: chat-service
+    spec:
+      containers:
+        - name: chat-service
+          image: {{ .Values.global.ecrBase }}/{{ .Values.chat.image }}:{{ .Values.global.imageTag }}
+          ports:
+            - containerPort: 3004
+          env:
+            - name: PORT
+              value: "3004"
+            - name: NODE_ENV
+              value: production
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: JWT_SECRET
+            - name: CLIENT_URLS
+              value: "http://frontend-service"
+            - name: AWS_REGION
+              value: {{ .Values.global.awsRegion }}
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3004 }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3004 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: {{ .Values.chat.resources.requests.cpu }}
+              memory: {{ .Values.chat.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.chat.resources.limits.cpu }}
+              memory: {{ .Values.chat.resources.limits.memory }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-service
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: chat-service
+  ports:
+    - port: 3004
+      targetPort: 3004
+  type: ClusterIP

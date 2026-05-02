@@ -1,0 +1,58 @@
+global:
+  namespace: streamingapp
+  ecrBase: "975050024946.dkr.ecr.eu-west-2.amazonaws.com/prateek-streamingapp"
+  imageTag: "latest"
+  awsRegion: eu-west-2
+
+mongodb:
+  image: mongo:6.0
+  storage: 5Gi
+  storageClass: gp2
+
+auth:
+  replicas: 2
+  port: 3001
+  image: auth
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "300m", memory: "256Mi" }
+
+streaming:
+  replicas: 2
+  port: 3002
+  image: streaming
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "500m", memory: "512Mi" }
+
+admin:
+  replicas: 1
+  port: 3003
+  image: admin
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "300m", memory: "256Mi" }
+
+chat:
+  replicas: 2
+  port: 3004
+  image: chat
+  resources:
+    requests: { cpu: "100m", memory: "128Mi" }
+    limits:   { cpu: "300m", memory: "256Mi" }
+
+frontend:
+  replicas: 2
+  port: 80
+  image: frontend
+  serviceType: LoadBalancer
+  resources:
+    requests: { cpu: "50m",  memory: "64Mi" }
+    limits:   { cpu: "200m", memory: "128Mi" }
+
+autoscaling:
+  enabled: true
+
+cloudwatch:
+  enabled: true
+  logGroupPrefix: /streamingapp
