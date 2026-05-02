@@ -6,15 +6,15 @@ pipeline {
         AWS_ACCOUNT_ID  = '975050024946'
         ECR_BASE        = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_TAG       = "${BUILD_NUMBER}"
-        EKS_CLUSTER     = 'shopnow-eks'
+        EKS_CLUSTER     = 'prateek-streamingapp-eks'
         K8S_NAMESPACE   = 'streamingapp'
 
         // ECR repository names
-        ECR_FRONTEND    = "${ECR_BASE}/streamingapp-frontend"
-        ECR_AUTH        = "${ECR_BASE}/streamingapp-auth"
-        ECR_STREAMING   = "${ECR_BASE}/streamingapp-streaming"
-        ECR_ADMIN       = "${ECR_BASE}/streamingapp-admin"
-        ECR_CHAT        = "${ECR_BASE}/streamingapp-chat"
+        ECR_FRONTEND    = "${ECR_BASE}/prateek-streamingapp/frontend"
+        ECR_AUTH        = "${ECR_BASE}/prateek-streamingapp/auth"
+        ECR_STREAMING   = "${ECR_BASE}/prateek-streamingapp/streaming"
+        ECR_ADMIN       = "${ECR_BASE}/prateek-streamingapp/admin"
+        ECR_CHAT        = "${ECR_BASE}/prateek-streamingapp/chat"
     }
 
     options {
@@ -56,7 +56,7 @@ pipeline {
                                   accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                                   secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                     sh """
-                        for repo in streamingapp-frontend streamingapp-auth streamingapp-streaming streamingapp-admin streamingapp-chat; do
+                        for repo in prateek-streamingapp/frontend prateek-streamingapp/auth prateek-streamingapp/streaming prateek-streamingapp/admin prateek-streamingapp/chat; do
                             aws ecr describe-repositories --repository-names \$repo --region ${AWS_REGION} 2>/dev/null || \
                             aws ecr create-repository --repository-name \$repo --region ${AWS_REGION}
                         done
