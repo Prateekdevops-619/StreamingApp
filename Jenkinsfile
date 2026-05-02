@@ -189,7 +189,7 @@ pipeline {
 
                         # MongoDB
                         kubectl apply -f k8s/mongodb-statefulset.yaml
-                        kubectl rollout status statefulset/mongodb -n ${K8S_NAMESPACE} --timeout=120s
+                        kubectl rollout status statefulset/mongodb -n ${K8S_NAMESPACE} --timeout=300s
 
                         # Backend services — inject image tags
                         sed 's|IMAGE_PLACEHOLDER_AUTH|${ECR_AUTH}:${IMAGE_TAG}|g'           k8s/auth-deployment.yaml       | kubectl apply -f -
